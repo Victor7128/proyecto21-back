@@ -4,17 +4,13 @@ import pyodbc
 
 from config import get_settings
 from exceptions import UnauthorizedError
-from services.personal_service import get_personal_by_documento, verify_password
+from services.personal_service import get_personal_by_email, verify_password
 
 settings = get_settings()
 
 
-def login(conn: pyodbc.Connection, num_documento: str, password: str) -> dict:
-    """
-    Verifica las credenciales del personal y devuelve un JWT.
-    Lanza UnauthorizedError si las credenciales son incorrectas o el usuario está inactivo.
-    """
-    personal = get_personal_by_documento(conn, num_documento)
+def login(conn: pyodbc.Connection, email: str, password: str) -> dict:
+    personal = get_personal_by_email(conn, email)
 
     if personal is None:
         raise UnauthorizedError("Credenciales inválidas.")

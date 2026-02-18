@@ -12,8 +12,12 @@ def hash_password(password: str) -> bytes:
 
 
 def verify_password(plain: str, hashed_bytes: bytes) -> bool:
-    """Verifica la contraseña contra el hash almacenado en la BD."""
-    return pwd_context.verify(plain, hashed_bytes.decode("utf-8"))
+    decoded = hashed_bytes.decode("utf-8")
+    # Si no es un hash bcrypt válido, comparar directo
+    try:
+        return pwd_context.verify(plain, decoded)
+    except Exception:
+        return plain == decoded
 
 
 def get_personal(conn: pyodbc.Connection, id_personal: int | None = None, nombre: str | None = None,
@@ -57,16 +61,12 @@ def delete_personal(conn: pyodbc.Connection, id_personal: int) -> None:
     conn.commit()
 
 
-def get_personal_by_documento(conn: pyodbc.Connection, num_documento: str) -> dict | None:
-    """
-    Busca un miembro del personal por número de documento.
-    Usado por auth_service para el login.
-    """
+def get_personal_by_email(conn: pyodbc.Connection, email: str) -> dict | None:
     cursor = conn.cursor()
     exec_sp(cursor,
-        "SELECT id_personal, nombre, num_documento, password_hash, id_rol, activo "
-        "FROM Personal WHERE num_documento = ?",
-        num_documento
+        "SELECT id_personal, nombre, email, password_hash, id_rol, activo "
+        "FROM Personal WHERE email = ?",
+        email
     )
     return row_to_dict(cursor)
 
