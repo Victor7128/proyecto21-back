@@ -46,7 +46,7 @@ class PersonalResponse(BaseModel):
     tipo_documento: str              # descripcion del join con TipoDocumento
     num_documento: str
     email: Optional[str]
-    rol: str                         # nombre del join con Rol
+    rol: str 
     activo: bool
     fecha_creacion: datetime
 
