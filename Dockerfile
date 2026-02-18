@@ -1,9 +1,8 @@
-FROM python:3.11-slim
+FROM python:3.11-bookworm
 
 ENV ACCEPT_EULA=Y
 ENV DEBIAN_FRONTEND=noninteractive
 
-# Instalar dependencias del sistema y ODBC Driver 18
 RUN apt-get update && \
     apt-get install -y curl apt-transport-https gnupg2 && \
     curl https://packages.microsoft.com/keys/microsoft.asc | apt-key add - && \
