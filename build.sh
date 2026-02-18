@@ -1,10 +1,11 @@
 #!/bin/bash
 set -e
 
-curl https://packages.microsoft.com/keys/microsoft.asc | apt-key add -
-curl https://packages.microsoft.com/config/ubuntu/22.04/prod.list > /etc/apt/sources.list.d/mssql-release.list
+curl -fsSL https://packages.microsoft.com/keys/microsoft.asc | sudo gpg --dearmor -o /usr/share/keyrings/microsoft-prod.gpg
 
-apt-get update
-ACCEPT_EULA=Y apt-get install -y msodbcsql18 unixodbc-dev
+echo "deb [arch=amd64 signed-by=/usr/share/keyrings/microsoft-prod.gpg] https://packages.microsoft.com/ubuntu/22.04/prod jammy main" | sudo tee /etc/apt/sources.list.d/mssql-release.list
+
+sudo apt-get update
+sudo ACCEPT_EULA=Y apt-get install -y msodbcsql18 unixodbc-dev
 
 pip install -r requirements.txt
