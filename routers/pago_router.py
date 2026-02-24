@@ -42,10 +42,20 @@ def crear_pago(
     """
     Registra un pago sobre un documento.
     El SP valida que el monto no exceda el saldo pendiente y actualiza
-    automáticamente monto_pagado y estado_documento en la tabla Documento.
-    Si no se especifica id_personal, se usa el usuario autenticado.
+    automáticamente monto_pagado en la tabla Documento.
+
+    id_personal: si no se especifica en el body, se usa el usuario autenticado.
+    Solo aplica cuando el token es de tipo 'personal'; si es un huésped,
+    id_personal queda como NULL en el registro del pago.
     """
-    id_personal = body.id_personal if body.id_personal is not None else current_user["id_personal"]
+    if body.id_personal is not None:
+        id_personal = body.id_personal
+    elif current_user.get("tipo") == "personal":
+        id_personal = current_user["id_personal"]
+    else:
+        # Huésped registrando su propio pago → no hay id_personal asociado
+        id_personal = None
+
     result = create_pago(
         conn, body.id_documento, body.monto_pagado, body.metodo, body.estado_pago,
         body.numero_comprobante, body.numero_operacion, body.observaciones, id_personal
@@ -60,12 +70,18 @@ def actualizar_pago(
     id_pago: int,
     body: PagoUpdate,
     conn: pyodbc.Connection = Depends(get_db),
-    _: dict = Depends(get_current_user),
+    current_user: dict = Depends(get_current_user),
 ):
     """
-    Actualiza solo datos administrativos del pago (estado, comprobante, operación, observaciones).
+    Actualiza solo datos administrativos del pago.
     El monto es inmutable una vez registrado.
+    Solo accesible con token de tipo 'personal'.
     """
+    if current_user.get("tipo") != "personal":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Solo el personal puede modificar pagos."
+        )
     existing = get_pagos(conn, id_pago=id_pago)
     if not existing:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Pago no encontrado.")
@@ -78,11 +94,17 @@ def actualizar_pago(
 def eliminar_pago(
     id_pago: int,
     conn: pyodbc.Connection = Depends(get_db),
-    _: dict = Depends(get_current_user),
+    current_user: dict = Depends(get_current_user),
 ):
     """
-    Elimina el pago y revierte el monto en el Documento (manejado en transacción por el SP).
+    Elimina el pago y revierte el monto en el Documento.
+    Solo accesible con token de tipo 'personal'.
     """
+    if current_user.get("tipo") != "personal":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Solo el personal puede eliminar pagos."
+        )
     existing = get_pagos(conn, id_pago=id_pago)
     if not existing:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Pago no encontrado.")

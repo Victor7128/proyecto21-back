@@ -8,10 +8,10 @@ class ReservaCreate(BaseModel):
     id_huesped: int
     id_habitacion: int
     fecha_entrada: date
-    fecha_salida: date               # debe ser > fecha_entrada (validado en SP)
-    num_personas: int                # > 0
-    monto_total: float               # >= 0
-    estado: int                      # FK → EstadoReserva
+    fecha_salida: date                      # debe ser > fecha_entrada (validado en SP)
+    num_personas: int                       # > 0
+    monto_total: float                      # >= 0
+    estado: int                             # FK → EstadoReserva
 
 
 class ReservaUpdate(BaseModel):
@@ -28,16 +28,20 @@ class ReservaUpdate(BaseModel):
 class ReservaResponse(BaseModel):
     """
     Mapea el SELECT de sp_GetReserva.
-    El SP devuelve huesped y habitacion como strings compuestos.
+    Se incluyen id_huesped e id_habitacion (además de los strings compuestos)
+    para que el portal pueda filtrar y verificar que una reserva pertenece
+    al huésped autenticado sin un query extra.
     """
     id_reserva: int
-    huesped: str                     # nombres + apellidos del join
-    habitacion: str                  # numero + piso formateado
+    id_huesped: int                         # FK raw — útil para validar ownership en el portal
+    huesped: str                            # nombres + apellidos del join
+    id_habitacion: int                      # FK raw
+    habitacion: str                         # numero + piso formateado
     fecha_entrada: date
     fecha_salida: date
     num_personas: int
     monto_total: float
-    estado: str                      # nombre del join con EstadoReserva
+    estado: str                             # nombre del join con EstadoReserva
     fecha_creacion: datetime
 
 
@@ -47,5 +51,5 @@ class ReservaFilter(BaseModel):
     id_huesped: Optional[int] = None
     id_habitacion: Optional[int] = None
     estado: Optional[int] = None
-    fecha_entrada: Optional[date] = None   # filtra reservas desde esta fecha
-    fecha_salida: Optional[date] = None    # filtra reservas hasta esta fecha
+    fecha_entrada: Optional[date] = None    # filtra reservas desde esta fecha
+    fecha_salida: Optional[date] = None     # filtra reservas hasta esta fecha

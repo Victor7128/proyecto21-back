@@ -8,7 +8,7 @@ from schemas.personal import (
 from schemas.common import MensajeResponse
 from services.personal_service import (
     get_personal, create_personal, update_personal, delete_personal,
-    update_password, verify_password
+    update_password, verify_password, get_personal_by_email,
 )
 
 router = APIRouter(prefix="/personal", tags=["Personal"])
@@ -42,8 +42,14 @@ def obtener_personal(
 def crear_personal(
     body: PersonalCreate,
     conn: pyodbc.Connection = Depends(get_db),
-    _: dict = Depends(get_current_user),
+    current_user: dict = Depends(get_current_user),
 ):
+    """Solo accesible con token de tipo 'personal'."""
+    if current_user.get("tipo") != "personal":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Acceso restringido al personal interno."
+        )
     result = create_personal(
         conn, body.nombre, body.tipo_documento, body.num_documento,
         body.email, body.password, body.id_rol, body.activo
@@ -58,8 +64,13 @@ def actualizar_personal(
     id_personal: int,
     body: PersonalUpdate,
     conn: pyodbc.Connection = Depends(get_db),
-    _: dict = Depends(get_current_user),
+    current_user: dict = Depends(get_current_user),
 ):
+    if current_user.get("tipo") != "personal":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Acceso restringido al personal interno."
+        )
     existing = get_personal(conn, id_personal=id_personal)
     if not existing:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Personal no encontrado.")
@@ -74,8 +85,13 @@ def actualizar_personal(
 def eliminar_personal(
     id_personal: int,
     conn: pyodbc.Connection = Depends(get_db),
-    _: dict = Depends(get_current_user),
+    current_user: dict = Depends(get_current_user),
 ):
+    if current_user.get("tipo") != "personal":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Acceso restringido al personal interno."
+        )
     existing = get_personal(conn, id_personal=id_personal)
     if not existing:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Personal no encontrado.")
@@ -92,31 +108,32 @@ def cambiar_password(
 ):
     """
     Cambia la contraseña del personal.
-    Solo puede cambiarse por el propio usuario o por un administrador.
+    Solo puede hacerlo el propio usuario autenticado como 'personal'.
     """
-    # Verificar que el personal existe
-    existing = get_personal(conn, id_personal=id_personal)
-    if not existing:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Personal no encontrado.")
+    # Solo tokens de personal pueden llegar aquí
+    if current_user.get("tipo") != "personal":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Acceso restringido al personal interno."
+        )
 
-    # Solo el propio usuario puede cambiar su contraseña (o admins, si aplica tu lógica de roles)
+    # Solo el propio usuario puede cambiar su contraseña
     if current_user["id_personal"] != id_personal:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="No tienes permiso para cambiar la contraseña de otro usuario."
         )
 
-    # Obtener el hash actual directamente de la BD para verificación
-    cursor = conn.cursor()
-    cursor.execute(
-        "SELECT password_hash FROM Personal WHERE id_personal = ?", id_personal
-    )
-    row = cursor.fetchone()
-    if not row:
-        raise HTTPException(status_code=404, detail="Personal no encontrado.")
+    existing = get_personal(conn, id_personal=id_personal)
+    if not existing:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Personal no encontrado.")
 
-    password_hash_actual = row[0]
-    if not verify_password(body.password_actual, password_hash_actual):
+    # Recuperar hash actual usando sp_LoginPersonal a través del email del registro
+    personal_auth = get_personal_by_email(conn, existing[0]["email"])
+    if not personal_auth:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Personal no encontrado.")
+
+    if not verify_password(body.password_actual, personal_auth["password_hash"]):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="La contraseña actual es incorrecta."
