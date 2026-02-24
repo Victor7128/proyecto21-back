@@ -33,8 +33,8 @@ def login_personal(conn: pyodbc.Connection, email: str, password: str) -> dict:
     token = _crear_token({
         "sub":         str(personal["id_personal"]),
         "tipo":        "personal",
-        "id_personal": personal["id_personal"],
-        "id_rol":      personal["id_rol"],
+        "id_personal": int(personal["id_personal"]),   # ← cast
+        "id_rol":      int(personal["id_rol"]),         # ← cast
         "nombre_rol":  personal.get("nombre_rol"),
     })
 
@@ -68,7 +68,7 @@ def login_huesped(conn: pyodbc.Connection, email_login: str, password: str) -> d
     token = _crear_token({
         "sub":        str(huesped["id_huesped"]),
         "tipo":       "huesped",
-        "id_huesped": huesped["id_huesped"],
+        "id_huesped": int(huesped["id_huesped"]),       # ← cast
     })
 
     return {"access_token": token, "token_type": "bearer", "tipo": "huesped"}
@@ -93,7 +93,7 @@ def registro_huesped(conn: pyodbc.Connection, nombres: str, apellidos: str,
     if result is None:
         raise UnauthorizedError("Error al registrar el huésped.")
 
-    id_huesped = result["id_huesped"]
+    id_huesped = int(result["id_huesped"])
 
     token = _crear_token({
         "sub":        str(id_huesped),

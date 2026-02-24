@@ -3,6 +3,7 @@ Funciones utilitarias compartidas por todos los services.
 """
 import pyodbc
 from typing import Optional
+from decimal import Decimal
 
 from fastapi import HTTPException
 
@@ -27,14 +28,15 @@ def rows_to_list(cursor: pyodbc.Cursor) -> list[dict]:
 
 
 def row_to_dict(cursor: pyodbc.Cursor) -> Optional[dict]:
-    """
-    Convierte la primera fila del cursor en un diccionario.
-    Usar después de un INSERT que retorna SCOPE_IDENTITY o un GET por ID.
-    """
     if cursor.description is None:
         return None
     columns = [col[0] for col in cursor.description]
     row = cursor.fetchone()
     if row is None:
         return None
-    return dict(zip(columns, row))
+    result = {}
+    for key, value in zip(columns, row):
+        if isinstance(value, Decimal):
+            value = int(value) if value == value.to_integral_value() else float(value)
+        result[key] = value
+    return result

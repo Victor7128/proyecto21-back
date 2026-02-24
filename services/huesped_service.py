@@ -1,25 +1,19 @@
 from typing import Optional
 import pyodbc
-from passlib.context import CryptContext
+import bcrypt
 from fastapi import HTTPException
 
 from services.utils import rows_to_list, row_to_dict, exec_sp
 
-# Reutiliza el mismo contexto bcrypt que personal_service
-# para no tener dos instancias distintas en memoria.
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
-
-
 # ── Helpers de contraseña ──────────────────────────────────────────────────────
 
 def hash_password(password: str) -> bytes:
-    """Hashea con bcrypt y devuelve bytes para VARBINARY(MAX)."""
-    return pwd_context.hash(password).encode("utf-8")
+    return bcrypt.hashpw(password.encode("utf-8"), bcrypt.gensalt())
 
 
 def verify_password(plain: str, hashed_bytes: bytes) -> bool:
     try:
-        return pwd_context.verify(plain, hashed_bytes.decode("utf-8"))
+        return bcrypt.checkpw(plain.encode("utf-8"), hashed_bytes)
     except Exception:
         return False
 

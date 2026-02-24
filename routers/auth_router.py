@@ -42,7 +42,6 @@ def iniciar_sesion_huesped(
     except UnauthorizedError as e:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail=str(e))
 
-
 @router.post("/registro", response_model=RegistroHuespedResponse, status_code=status.HTTP_201_CREATED)
 def registrar_huesped(
     body: HuespedRegistro,

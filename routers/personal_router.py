@@ -98,6 +98,28 @@ def eliminar_personal(
     delete_personal(conn, id_personal)
     return {"mensaje": "Personal desactivado correctamente."}
 
+@router.post("/bootstrap", response_model=PersonalResponse, status_code=status.HTTP_201_CREATED)
+def crear_primer_admin(
+    body: PersonalCreate,
+    conn: pyodbc.Connection = Depends(get_db),
+):
+    """
+    Crea el primer administrador si no existe ningún personal en la BD.
+    Este endpoint se deshabilita automáticamente una vez que hay al menos un usuario.
+    """
+    existing = get_personal(conn)
+    if existing:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Ya existe personal registrado. Use el endpoint normal con autenticación."
+        )
+    result = create_personal(
+        conn, body.nombre, body.tipo_documento, body.num_documento,
+        body.email, body.password, body.id_rol, body.activo
+    )
+    if not result:
+        raise HTTPException(status_code=500, detail="Error al crear el administrador.")
+    return get_personal(conn, id_personal=result["id_personal"])[0]
 
 @router.put("/{id_personal}/password", response_model=MensajeResponse)
 def cambiar_password(
